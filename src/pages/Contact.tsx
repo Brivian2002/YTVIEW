@@ -43,7 +43,7 @@ export default function Contact() {
           <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
           <p className="text-muted-foreground max-w-xl mx-auto">
             Have a question or need help? We're here to assist you. 
-            Fill out the form below and we'll get back to you as soon as possible.
+            Reach out and we'll get back to you as soon as possible.
           </p>
         </div>
 
@@ -125,27 +125,31 @@ export default function Contact() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="w-5 h-5" />
-                  Email Us
+                  Contact Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">General Inquiries</p>
-                  <a href="mailto:hello@ytubeview.com" className="text-primary hover:underline">
-                    hello@ytubeview.com
+                  <p className="text-sm text-muted-foreground mb-1">Email</p>
+                  <a 
+                    href="mailto:brightsany3000@gmail.com" 
+                    className="text-primary hover:underline font-medium"
+                  >
+                    brightsany3000@gmail.com
                   </a>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Support</p>
-                  <a href="mailto:support@ytubeview.com" className="text-primary hover:underline">
-                    support@ytubeview.com
+                  <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                  <a 
+                    href="tel:+233535343490" 
+                    className="text-primary hover:underline font-medium"
+                  >
+                    +233 53 534 3490
                   </a>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Billing</p>
-                  <a href="mailto:billing@ytubeview.com" className="text-primary hover:underline">
-                    billing@ytubeview.com
-                  </a>
+                  <p className="text-sm text-muted-foreground mb-1">Support Hours</p>
+                  <p className="font-medium">Mon - Fri: 9AM - 6PM GMT</p>
                 </div>
               </CardContent>
             </Card>
