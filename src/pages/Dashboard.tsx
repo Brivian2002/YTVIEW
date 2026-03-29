@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useAuthStore } from '@/stores';
+import { getTrendingVideos } from '@/lib/youtubeApi';
+import type { Video } from '@/types';
 import { 
   formatNumber, 
   formatRelativeTime 
 } from '@/lib/utils';
-import {
+import{
   TrendingUp,
   TrendingDown,
   Users,
@@ -21,10 +23,12 @@ import {
   ArrowRight,
   Play,
   BarChart3,
-  AlertCircle,
   ExternalLink,
+  RefreshCw,
+  Loader2,
+  Flame,
 } from 'lucide-react';
-import {
+import{
   XAxis,
   YAxis,
   CartesianGrid,
@@ -34,7 +38,7 @@ import {
   Area,
 } from 'recharts';
 
-// Mock data for the dashboard
+// Mock chart data for analytics
 const mockChartData = [
   { date: 'Mon', views: 12000, subscribers: 150, engagement: 4.2 },
   { date: 'Tue', views: 15000, subscribers: 180, engagement: 4.5 },
@@ -45,62 +49,73 @@ const mockChartData = [
   { date: 'Sun', views: 25000, subscribers: 320, engagement: 5.5 },
 ];
 
-const mockRecentVideos = [
-  {
-    id: '1',
-    title: 'How to Grow Your YouTube Channel in 2024',
-    thumbnail: 'https://i.ytimg.com/vi/123/maxresdefault.jpg',
-    views: 45200,
-    likes: 3200,
-    comments: 180,
-    publishedAt: new Date(Date.now() - 86400000).toISOString(),
-    performance: 'up',
-  },
-  {
-    id: '2',
-    title: 'YouTube SEO Secrets Revealed',
-    thumbnail: 'https://i.ytimg.com/vi/456/maxresdefault.jpg',
-    views: 28900,
-    likes: 2100,
-    comments: 95,
-    publishedAt: new Date(Date.now() - 172800000).toISOString(),
-    performance: 'up',
-  },
-  {
-    id: '3',
-    title: 'Thumbnail Design Masterclass',
-    thumbnail: 'https://i.ytimg.com/vi/789/maxresdefault.jpg',
-    views: 15600,
-    likes: 1200,
-    comments: 67,
-    publishedAt: new Date(Date.now() - 259200000).toISOString(),
-    performance: 'down',
-  },
-];
-
-const mockAlerts = [
-  {
-    id: '1',
-    type: 'viral',
-    title: 'Viral Video Detected',
-    message: 'Your video "How to Grow Your YouTube Channel" is trending!',
-    time: '2 hours ago',
-  },
-  {
-    id: '2',
-    type: 'milestone',
-    title: 'Subscriber Milestone',
-    message: 'Congratulations! You reached 10,000 subscribers.',
-    time: '1 day ago',
-  },
-];
+// Calculate viral score
+const calculateViralScore = (video: Video): number => {
+  const views = video.viewCount;
+  const likes = video.likeCount;
+  const comments = video.commentCount;
+  const publishedAt = new Date(video.publishedAt);
+  const hoursSince = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursSince === 0 || hoursSince > 168) return 0; // Only videos from last 7 days
+  
+  const viewVelocity = views / hoursSince;
+  const engagementRate = views > 0 ? (likes + comments) / views : 0;
+  
+  const score = Math.min(100, (viewVelocity / 1000) * 15 + engagementRate * 200);
+  return Math.round(score);
+};
 
 export default function Dashboard() {
   const { user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [recentVideos, setRecentVideos] = useState<Video[]>([]);
+  const [viralVideos, setViralVideos] = useState<Video[]>([]);
+  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Fetch trending videos for recent/viral section
+  const fetchRecentVideos = async () => {
+    setIsLoadingVideos(true);
+    try {
+      const trending = await getTrendingVideos('US', 20);
+      
+      // Sort by published date (most recent first)
+      const sortedByDate = [...trending].sort((a, b) => 
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
+      
+      // Get top 5 most recent
+      setRecentVideos(sortedByDate.slice(0, 5));
+      
+      // Calculate viral scores and filter viral videos (score > 60)
+      const withViralScore = trending.map(v => ({
+        ...v,
+        viralScore: calculateViralScore(v)
+      }));
+      
+      const viral = withViralScore
+        .filter(v => v.viralScore > 60)
+        .sort((a, b) => b.viralScore - a.viralScore)
+        .slice(0, 3);
+      
+      setViralVideos(viral);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+    } finally {
+      setIsLoadingVideos(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
+    fetchRecentVideos();
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(fetchRecentVideos, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const plan = user?.plan || 'free';
@@ -140,6 +155,10 @@ export default function Dashboard() {
       prefix: '$',
     },
   ];
+
+  const openOnYouTube = (videoId: string) => {
+    window.open(`https://youtube.com/watch?v=${videoId}`, '_blank');
+  };
 
   if (!mounted) return null;
 
@@ -229,7 +248,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Charts & Content */}
+      {/* Charts & Viral Videos */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Chart */}
         <Card className="lg:col-span-2">
@@ -280,38 +299,84 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Alerts */}
+        {/* Viral Videos */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Recent Alerts
+              <Flame className="w-5 h-5 text-red-500" />
+              Trending Now
             </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={fetchRecentVideos}
+              disabled={isLoadingVideos}
+            >
+              {isLoadingVideos ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                >
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    alert.type === 'viral' ? 'bg-red-500' : 'bg-green-500'
-                  }`} />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{alert.title}</p>
-                    <p className="text-sm text-muted-foreground">{alert.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{alert.time}</p>
+            <div className="space-y-3">
+              {viralVideos.length > 0 ? (
+                viralVideos.map((video) => (
+                  <div
+                    key={video.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                    onClick={() => openOnYouTube(video.id)}
+                  >
+                    <div className="w-16 h-10 bg-muted rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                      {video.thumbnail ? (
+                        <>
+                          <img 
+                            src={video.thumbnail} 
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ExternalLink className="w-4 h-4 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <Play className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{video.title}</p>
+                      <p className="text-xs text-muted-foreground">{video.channelTitle}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="secondary" className="text-xs">
+                          <Flame className="w-3 h-3 mr-1 text-red-500" />
+                          {calculateViralScore(video)} viral
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {formatNumber(video.viewCount)} views
+                        </span>
+                      </div>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {isLoadingVideos ? (
+                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  ) : (
+                    <Flame className="w-8 h-8 mx-auto mb-2" />
+                  )}
+                  <p className="text-sm">
+                    {isLoadingVideos ? 'Loading trending videos...' : 'No viral videos detected'}
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
-            <Button variant="ghost" className="w-full mt-4" asChild>
-              <Link to="/settings">
-                View All Alerts
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Link>
-            </Button>
+            {lastUpdated && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Updated {formatRelativeTime(lastUpdated.toISOString())}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -319,70 +384,96 @@ export default function Dashboard() {
       {/* Recent Videos */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Recent Videos</CardTitle>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/video-analyzer">
-              View All
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Recent Videos
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-muted-foreground">
+                Updated {formatRelativeTime(lastUpdated.toISOString())}
+              </span>
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={fetchRecentVideos}
+              disabled={isLoadingVideos}
+            >
+              {isLoadingVideos ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/trending">
+                View All
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {mockRecentVideos.map((video) => (
-              <div
-                key={video.id}
-                className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
-              >
-                <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                  {video.thumbnail ? (
-                    <>
-                      <img 
-                        src={video.thumbnail} 
-                        alt={video.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ExternalLink className="w-5 h-5 text-white" />
-                      </div>
-                    </>
-                  ) : (
-                    <Play className="w-6 h-6 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate group-hover:text-primary transition-colors">{video.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatRelativeTime(video.publishedAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Eye className="w-4 h-4" />
-                    {formatNumber(video.views)}
+            {recentVideos.length > 0 ? (
+              recentVideos.map((video) => (
+                <div
+                  key={video.id}
+                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => openOnYouTube(video.id)}
+                >
+                  <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                    {video.thumbnail ? (
+                      <>
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ExternalLink className="w-5 h-5 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <Play className="w-6 h-6 text-muted-foreground" />
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="w-4 h-4" />
-                    {formatNumber(video.likes)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate group-hover:text-primary transition-colors">{video.title}</p>
+                    <p className="text-sm text-muted-foreground">{video.channelTitle}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatRelativeTime(video.publishedAt)}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <MessageSquare className="w-4 h-4" />
-                    {formatNumber(video.comments)}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-4 h-4" />
+                      {formatNumber(video.viewCount)}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Heart className="w-4 h-4" />
+                      {formatNumber(video.likeCount)}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4" />
+                      {formatNumber(video.commentCount)}
+                    </div>
                   </div>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className={`flex items-center gap-1 ${
-                  video.performance === 'up' ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {video.performance === 'up' ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                </div>
-                <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              ))
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                {isLoadingVideos ? (
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" />
+                ) : (
+                  <Play className="w-12 h-12 mx-auto mb-4" />
+                )}
+                <p>{isLoadingVideos ? 'Loading recent videos...' : 'No recent videos found'}</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
