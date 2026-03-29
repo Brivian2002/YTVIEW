@@ -22,6 +22,7 @@ import {
   Play,
   BarChart3,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import {
   XAxis,
@@ -331,13 +332,27 @@ export default function Dashboard() {
             {mockRecentVideos.map((video) => (
               <div
                 key={video.id}
-                className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
               >
-                <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Play className="w-6 h-6 text-muted-foreground" />
+                <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                  {video.thumbnail ? (
+                    <>
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ExternalLink className="w-5 h-5 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <Play className="w-6 h-6 text-muted-foreground" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{video.title}</p>
+                  <p className="font-medium truncate group-hover:text-primary transition-colors">{video.title}</p>
                   <p className="text-sm text-muted-foreground">
                     {formatRelativeTime(video.publishedAt)}
                   </p>
@@ -365,6 +380,7 @@ export default function Dashboard() {
                     <TrendingDown className="w-4 h-4" />
                   )}
                 </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             ))}
           </div>
