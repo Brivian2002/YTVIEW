@@ -27,6 +27,11 @@ import Admin from '@/pages/Admin';
 import Privacy from '@/pages/Privacy';
 import Terms from '@/pages/Terms';
 import Contact from '@/pages/Contact';
+import About from '@/pages/About';
+import Blog from '@/pages/Blog';
+import Careers from '@/pages/Careers';
+import APIPage from '@/pages/API';
+import CookiePolicy from '@/pages/CookiePolicy';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -66,9 +71,14 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/api" element={<APIPage />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/contact" element={<Contact />} />
+            <Route path="/cookie-policy" element={<CookiePolicy />} />
           </Route>
 
           {/* Auth Routes */}
