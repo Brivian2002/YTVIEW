@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import type { TrendingVideo } from '@/types';
+import { getTrendingVideos } from '@/lib/youtubeApi';
+import type { TrendingVideo, Video } from '@/types';
 import { 
   formatNumber, 
   formatRelativeTime,
 } from '@/lib/utils';
-import {
+import{
   TrendingUp,
   Flame,
   Globe,
@@ -20,6 +21,8 @@ import {
   Loader2,
   Filter,
   ExternalLink,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 
 const REGIONS = [
@@ -33,6 +36,8 @@ const REGIONS = [
   { code: 'IN', name: 'India' },
   { code: 'BR', name: 'Brazil' },
   { code: 'MX', name: 'Mexico' },
+  { code: 'NG', name: 'Nigeria' },
+  { code: 'ZA', name: 'South Africa' },
 ];
 
 const CATEGORIES = [
@@ -52,129 +57,102 @@ const CATEGORIES = [
   { id: '28', name: 'Science & Technology' },
 ];
 
-// Mock trending videos
-const MOCK_TRENDING: TrendingVideo[] = [
-  {
-    id: '1',
-    title: 'The Future of AI: What You Need to Know',
-    description: 'Exploring the latest developments in artificial intelligence.',
-    thumbnail: '',
-    channelId: 'channel1',
-    channelTitle: 'Tech Insights',
-    publishedAt: new Date(Date.now() - 3600000).toISOString(),
-    duration: 'PT15M30S',
-    viewCount: 2500000,
-    likeCount: 150000,
-    commentCount: 12000,
-    viralScore: 95,
-    viewVelocity: 2500,
-    category: '28',
-    region: 'US',
-  },
-  {
-    id: '2',
-    title: 'I Spent 24 Hours in the World\'s Most Dangerous Place',
-    description: 'An adventure into the unknown.',
-    thumbnail: '',
-    channelId: 'channel2',
-    channelTitle: 'Adventure Vlogs',
-    publishedAt: new Date(Date.now() - 7200000).toISOString(),
-    duration: 'PT25M45S',
-    viewCount: 1800000,
-    likeCount: 98000,
-    commentCount: 8500,
-    viralScore: 88,
-    viewVelocity: 1800,
-    category: '22',
-    region: 'US',
-  },
-  {
-    id: '3',
-    title: 'This New Game Will Change Everything',
-    description: 'First look at the most anticipated game of 2024.',
-    thumbnail: '',
-    channelId: 'channel3',
-    channelTitle: 'Gaming Central',
-    publishedAt: new Date(Date.now() - 10800000).toISOString(),
-    duration: 'PT12M15S',
-    viewCount: 3200000,
-    likeCount: 210000,
-    commentCount: 18000,
-    viralScore: 92,
-    viewVelocity: 3200,
-    category: '20',
-    region: 'US',
-  },
-  {
-    id: '4',
-    title: 'How to Cook the Perfect Steak',
-    description: 'Master chef secrets revealed.',
-    thumbnail: '',
-    channelId: 'channel4',
-    channelTitle: 'Cooking Masterclass',
-    publishedAt: new Date(Date.now() - 14400000).toISOString(),
-    duration: 'PT8M30S',
-    viewCount: 950000,
-    likeCount: 65000,
-    commentCount: 4200,
-    viralScore: 78,
-    viewVelocity: 950,
-    category: '26',
-    region: 'US',
-  },
-  {
-    id: '5',
-    title: 'The Untold Story of Space Exploration',
-    description: 'A journey through the history of space travel.',
-    thumbnail: '',
-    channelId: 'channel5',
-    channelTitle: 'Space Documentaries',
-    publishedAt: new Date(Date.now() - 18000000).toISOString(),
-    duration: 'PT45M00S',
-    viewCount: 750000,
-    likeCount: 45000,
-    commentCount: 3200,
-    viralScore: 72,
-    viewVelocity: 750,
-    category: '27',
-    region: 'US',
-  },
-];
+// Calculate viral score based on view velocity and engagement
+const calculateViralScore = (video: Video): number => {
+  const views = video.viewCount;
+  const likes = video.likeCount;
+  const comments = video.commentCount;
+  const publishedAt = new Date(video.publishedAt);
+  const hoursSince = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursSince === 0) return 0;
+  
+  // View velocity (views per hour)
+  const viewVelocity = views / hoursSince;
+  
+  // Engagement rate
+  const engagementRate = views > 0 ? (likes + comments) / views : 0;
+  
+  // Calculate score (0-100)
+  // High view velocity and engagement = viral
+  const velocityScore = Math.min(70, (viewVelocity / 5000) * 70);
+  const engagementScore = Math.min(30, engagementRate * 1000);
+  
+  return Math.round(velocityScore + engagementScore);
+};
+
+// Calculate view velocity (views per hour)
+const calculateViewVelocity = (video: Video): number => {
+  const views = video.viewCount;
+  const publishedAt = new Date(video.publishedAt);
+  const hoursSince = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursSince <= 0) return views;
+  return Math.round(views / hoursSince);
+};
 
 export default function Trending() {
-  const [videos, setVideos] = useState<TrendingVideo[]>(MOCK_TRENDING);
+  const [videos, setVideos] = useState<TrendingVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('US');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  const loadTrending = async () => {
+  const loadTrending = useCallback(async () => {
     setIsLoading(true);
     try {
-      // In production, this would call the actual API
-      // const trendingVideos = await getTrendingVideos(selectedRegion);
-      // setVideos(trendingVideos);
+      const trendingVideos = await getTrendingVideos(selectedRegion, 50);
       
-      // For demo, shuffle and filter mock data
-      setTimeout(() => {
-        const shuffled = [...MOCK_TRENDING].sort(() => Math.random() - 0.5);
-        setVideos(shuffled);
-        setIsLoading(false);
-      }, 1000);
+      // Calculate viral scores and view velocity for each video
+      const videosWithScores = trendingVideos.map(video => ({
+        ...video,
+        viralScore: calculateViralScore(video),
+        viewVelocity: calculateViewVelocity(video),
+      }));
+      
+      // Filter by category if selected
+      let filteredVideos = videosWithScores;
+      if (selectedCategory !== 'all') {
+        filteredVideos = videosWithScores.filter(v => v.category === selectedCategory);
+      }
+      
+      // Sort by viral score (highest first)
+      filteredVideos.sort((a, b) => b.viralScore - a.viralScore);
+      
+      setVideos(filteredVideos);
+      setLastUpdated(new Date());
     } catch (error) {
       toast.error('Failed to load trending videos');
+    } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedRegion, selectedCategory]);
 
   useEffect(() => {
     loadTrending();
-  }, [selectedRegion, selectedCategory]);
+  }, [loadTrending]);
+
+  // Auto-refresh every 2 minutes
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      loadTrending();
+    }, 2 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [autoRefresh, loadTrending]);
 
   const getViralBadge = (score: number) => {
-    if (score >= 90) return { label: 'Viral', color: 'bg-red-500' };
-    if (score >= 80) return { label: 'Trending', color: 'bg-orange-500' };
-    if (score >= 70) return { label: 'Rising', color: 'bg-yellow-500' };
-    return { label: 'Normal', color: 'bg-gray-500' };
+    if (score >= 80) return { label: 'Viral', color: 'bg-red-500', icon: Flame };
+    if (score >= 60) return { label: 'Trending', color: 'bg-orange-500', icon: TrendingUp };
+    if (score >= 40) return { label: 'Rising', color: 'bg-yellow-500', icon: Zap };
+    return { label: 'Normal', color: 'bg-gray-500', icon: Play };
+  };
+
+  const openOnYouTube = (videoId: string) => {
+    window.open(`https://youtube.com/watch?v=${videoId}`, '_blank');
   };
 
   return (
@@ -187,7 +165,7 @@ export default function Trending() {
             Trending Videos
           </h1>
           <p className="text-muted-foreground">
-            Discover viral content and trending topics across YouTube.
+            Discover viral content and trending topics across YouTube. Updates every 2 minutes.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -221,7 +199,7 @@ export default function Trending() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
@@ -230,7 +208,7 @@ export default function Trending() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Viral Videos</p>
-                <p className="text-xl font-bold">{videos.filter(v => v.viralScore >= 90).length}</p>
+                <p className="text-xl font-bold">{videos.filter(v => v.viralScore >= 80).length}</p>
               </div>
             </div>
           </CardContent>
@@ -243,7 +221,7 @@ export default function Trending() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Trending</p>
-                <p className="text-xl font-bold">{videos.filter(v => v.viralScore >= 80).length}</p>
+                <p className="text-xl font-bold">{videos.filter(v => v.viralScore >= 60).length}</p>
               </div>
             </div>
           </CardContent>
@@ -272,7 +250,24 @@ export default function Trending() {
               <div>
                 <p className="text-sm text-muted-foreground">Avg Velocity</p>
                 <p className="text-xl font-bold">
-                  {formatNumber(Math.round(videos.reduce((sum, v) => sum + v.viewVelocity, 0) / videos.length))}/h
+                  {videos.length > 0 
+                    ? formatNumber(Math.round(videos.reduce((sum, v) => sum + v.viewVelocity, 0) / videos.length))
+                    : 0}/h
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <Clock className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Last Updated</p>
+                <p className="text-xl font-bold">
+                  {lastUpdated ? formatRelativeTime(lastUpdated.toISOString()) : 'Never'}
                 </p>
               </div>
             </div>
@@ -284,81 +279,103 @@ export default function Trending() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top Trending</CardTitle>
-          <Button variant="outline" size="sm" onClick={loadTrending} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <TrendingUp className="w-4 h-4 mr-2" />
-            )}
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={autoRefresh ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+            >
+              {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={loadTrending} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {videos.map((video, index) => {
-              const viralBadge = getViralBadge(video.viralScore);
-              return (
-                <div
-                  key={video.id}
-                  className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                  onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
-                >
-                  <div className="flex-shrink-0 w-8 text-center">
-                    <span className="text-2xl font-bold text-muted-foreground">
-                      {index + 1}
-                    </span>
-                  </div>
-                  <div className="w-40 aspect-video bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                    {video.thumbnail ? (
-                      <>
-                        <img 
-                          src={video.thumbnail} 
-                          alt={video.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ExternalLink className="w-6 h-6 text-white" />
+            {isLoading && videos.length === 0 ? (
+              <div className="text-center py-12">
+                <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">Loading trending videos...</p>
+              </div>
+            ) : videos.length > 0 ? (
+              videos.map((video, index) => {
+                const viralBadge = getViralBadge(video.viralScore);
+                const BadgeIcon = viralBadge.icon;
+                return (
+                  <div
+                    key={video.id}
+                    className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                    onClick={() => openOnYouTube(video.id)}
+                  >
+                    <div className="flex-shrink-0 w-8 text-center">
+                      <span className="text-2xl font-bold text-muted-foreground">
+                        {index + 1}
+                      </span>
+                    </div>
+                    <div className="w-40 aspect-video bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                      {video.thumbnail ? (
+                        <>
+                          <img 
+                            src={video.thumbnail} 
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ExternalLink className="w-6 h-6 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <Play className="w-8 h-8 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-medium line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
+                          <p className="text-sm text-muted-foreground">{video.channelTitle}</p>
                         </div>
-                      </>
-                    ) : (
-                      <Play className="w-8 h-8 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h3 className="font-medium line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
-                        <p className="text-sm text-muted-foreground">{video.channelTitle}</p>
+                        <Badge className={`${viralBadge.color} text-white flex-shrink-0`}>
+                          <BadgeIcon className="w-3 h-3 mr-1" />
+                          {viralBadge.label}
+                        </Badge>
                       </div>
-                      <Badge className={`${viralBadge.color} text-white flex-shrink-0`}>
-                        <Flame className="w-3 h-3 mr-1" />
-                        {viralBadge.label}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
+                          {formatNumber(video.viewCount)} views
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-4 h-4" />
+                          {formatNumber(video.likeCount)} likes
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Zap className="w-4 h-4" />
+                          {formatNumber(video.viewVelocity)}/h velocity
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Flame className="w-4 h-4" />
+                          {video.viralScore} viral score
+                        </span>
+                        <span>{formatRelativeTime(video.publishedAt)}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {formatNumber(video.viewCount)} views
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        {formatNumber(video.likeCount)} likes
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Zap className="w-4 h-4" />
-                        {formatNumber(video.viewVelocity)}/h velocity
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-4 h-4" />
-                        {video.viralScore} viral score
-                      </span>
-                      <span>{formatRelativeTime(video.publishedAt)}</span>
-                    </div>
+                    <ExternalLink className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
                   </div>
-                  <ExternalLink className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="text-center py-12">
+                <Flame className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground">No trending videos found</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
