@@ -19,6 +19,7 @@ import {
   Zap,
   Loader2,
   Filter,
+  ExternalLink,
 } from 'lucide-react';
 
 const REGIONS = [
@@ -299,20 +300,34 @@ export default function Trending() {
               return (
                 <div
                   key={video.id}
-                  className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-start gap-4 p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                  onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
                 >
                   <div className="flex-shrink-0 w-8 text-center">
                     <span className="text-2xl font-bold text-muted-foreground">
                       {index + 1}
                     </span>
                   </div>
-                  <div className="w-40 aspect-video bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Play className="w-8 h-8 text-muted-foreground" />
+                  <div className="w-40 aspect-video bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                    {video.thumbnail ? (
+                      <>
+                        <img 
+                          src={video.thumbnail} 
+                          alt={video.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ExternalLink className="w-6 h-6 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <Play className="w-8 h-8 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <h3 className="font-medium line-clamp-2">{video.title}</h3>
+                        <h3 className="font-medium line-clamp-2 group-hover:text-primary transition-colors">{video.title}</h3>
                         <p className="text-sm text-muted-foreground">{video.channelTitle}</p>
                       </div>
                       <Badge className={`${viralBadge.color} text-white flex-shrink-0`}>
@@ -340,6 +355,7 @@ export default function Trending() {
                       <span>{formatRelativeTime(video.publishedAt)}</span>
                     </div>
                   </div>
+                  <ExternalLink className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
                 </div>
               );
             })}
