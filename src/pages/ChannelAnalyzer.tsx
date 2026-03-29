@@ -16,7 +16,7 @@ import {
   isValidYouTubeUrl,
   extractChannelId 
 } from '@/lib/utils';
-import {
+import{
   Search,
   Users,
   Eye,
@@ -30,8 +30,9 @@ import {
   Award,
   Target,
   Zap,
+  ExternalLink,
 } from 'lucide-react';
-import {
+import{
   LineChart,
   Line,
   XAxis,
@@ -164,6 +165,14 @@ export default function ChannelAnalyzer() {
       : 0
   ));
 
+  const openOnYouTube = (videoId: string) => {
+    window.open(`https://youtube.com/watch?v=${videoId}`, '_blank');
+  };
+
+  const openChannelOnYouTube = (channelId: string) => {
+    window.open(`https://youtube.com/channel/${channelId}`, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -214,11 +223,17 @@ export default function ChannelAnalyzer() {
                   onClick={() => selectChannel(result)}
                   className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-muted transition-colors text-left"
                 >
-                  <img
-                    src={result.thumbnail}
-                    alt={result.title}
-                    className="w-16 h-16 rounded-lg object-cover"
-                  />
+                  {result.thumbnail ? (
+                    <img
+                      src={result.thumbnail}
+                      alt={result.title}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
+                      <Users className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  )}
                   <div className="flex-1">
                     <p className="font-medium">{result.title}</p>
                     <p className="text-sm text-muted-foreground line-clamp-1">
@@ -249,11 +264,17 @@ export default function ChannelAnalyzer() {
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
-                <img
-                  src={channel.thumbnail}
-                  alt={channel.title}
-                  className="w-24 h-24 rounded-xl object-cover"
-                />
+                {channel.thumbnail ? (
+                  <img
+                    src={channel.thumbnail}
+                    alt={channel.title}
+                    className="w-24 h-24 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-muted flex items-center justify-center">
+                    <Users className="w-12 h-12 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold">{channel.title}</h2>
                   <p className="text-muted-foreground mt-1 line-clamp-2">
@@ -272,6 +293,15 @@ export default function ChannelAnalyzer() {
                       Joined {formatDate(channel.publishedAt)}
                     </span>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => openChannelOnYouTube(channel.id)}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    View on YouTube
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -422,10 +452,19 @@ export default function ChannelAnalyzer() {
                     {videos.map((video) => (
                       <div
                         key={video.id}
-                        className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                        className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => openOnYouTube(video.id)}
                       >
-                        <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Play className="w-6 h-6 text-muted-foreground" />
+                        <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {video.thumbnail ? (
+                            <img 
+                              src={video.thumbnail} 
+                              alt={video.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Play className="w-6 h-6 text-muted-foreground" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{video.title}</p>
@@ -443,6 +482,7 @@ export default function ChannelAnalyzer() {
                             {avgEngagement.toFixed(1)}%
                           </span>
                         </div>
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
                       </div>
                     ))}
                   </div>
