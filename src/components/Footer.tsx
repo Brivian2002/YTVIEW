@@ -9,11 +9,13 @@ const footerLinks = {
     { label: 'API', href: '/api' },
   ],
   tools: [
-    { label: 'Channel Analyzer', href: '/channel-analyzer' },
-    { label: 'Video Analyzer', href: '/video-analyzer' },
-    { label: 'SEO Studio', href: '/seo-studio' },
-    { label: 'Thumbnail Lab', href: '/thumbnail-lab' },
-  ],
+  { label: 'Channel Analyzer', href: '/channel-analyzer' },
+  { label: 'Video Analyzer', href: '/video-analyzer' },
+  { label: 'SEO Studio', href: '/seo-studio' },
+  { label: 'Thumbnail Lab', href: '/thumbnail-lab' },
+  { label: 'LiveStream Pro', href: 'https://live-streamtech.vercel.app', external: true },
+  { label: 'BUY DATA BUNDLES', href: 'https://www.cheapdata.shop/shop/brivian-ltd', external: true }
+],
   company: [
     { label: 'About', href: '/about' },
     { label: 'Blog', href: '/blog' },
