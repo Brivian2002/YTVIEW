@@ -28,7 +28,7 @@ const plans = [
       { text: 'Bulk analysis', included: false },
     ],
     cta: 'Get Started',
-    href: '/signup',
+    href: 'https://ytubeview.vercel.app/',
     popular: false,
   },
   {
