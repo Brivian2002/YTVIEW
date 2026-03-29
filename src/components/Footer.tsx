@@ -3,10 +3,10 @@ import { Play, Twitter, Github, Linkedin, Youtube } from 'lucide-react';
 
 const footerLinks = {
   product: [
-    { label: 'Features', href: '#features' },
+    { label: 'Features', href: '/#features' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'API', href: '#' },
+    { label: 'API', href: '/api' },
   ],
   tools: [
     { label: 'Channel Analyzer', href: '/channel-analyzer' },
@@ -15,15 +15,15 @@ const footerLinks = {
     { label: 'Thumbnail Lab', href: '/thumbnail-lab' },
   ],
   company: [
-    { label: 'About', href: '#' },
-    { label: 'Blog', href: '#' },
-    { label: 'Careers', href: '#' },
+    { label: 'About', href: '/about' },
+    { label: 'Blog', href: '/blog' },
+    { label: 'Careers', href: '/careers' },
     { label: 'Contact', href: '/contact' },
   ],
   legal: [
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Terms of Service', href: '/terms' },
-    { label: 'Cookie Policy', href: '#' },
+    { label: 'Cookie Policy', href: '/cookie-policy' },
   ],
 };
 
