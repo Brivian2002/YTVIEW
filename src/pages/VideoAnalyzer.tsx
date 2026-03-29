@@ -16,7 +16,7 @@ import {
   isValidYouTubeUrl,
   extractVideoId 
 } from '@/lib/utils';
-import {
+import{
   Search,
   Play,
   Eye,
@@ -30,8 +30,9 @@ import {
   Target,
   Zap,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
-import {
+import{
   XAxis,
   YAxis,
   CartesianGrid,
@@ -87,7 +88,7 @@ export default function VideoAnalyzer() {
           result = await getVideo(videoId);
         }
       } else {
-        const results = await searchVideos(searchQuery, 5);
+        const results = await searchVideos(searchQuery);
         if (results.length === 1) {
           result = results[0];
         } else if (results.length > 1) {
@@ -153,6 +154,10 @@ export default function VideoAnalyzer() {
 
   const isOverperforming = performanceScore > 70;
 
+  const openOnYouTube = (videoId: string) => {
+    window.open(`https://youtube.com/watch?v=${videoId}`, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -203,8 +208,16 @@ export default function VideoAnalyzer() {
                   onClick={() => selectVideo(result)}
                   className="w-full flex items-center gap-4 p-4 rounded-lg hover:bg-muted transition-colors text-left"
                 >
-                  <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Play className="w-6 h-6 text-muted-foreground" />
+                  <div className="w-24 h-16 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {result.thumbnail ? (
+                      <img 
+                        src={result.thumbnail} 
+                        alt={result.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Play className="w-6 h-6 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium line-clamp-2">{result.title}</p>
@@ -234,11 +247,32 @@ export default function VideoAnalyzer() {
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
-                <div className="w-full md:w-64 aspect-video bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Play className="w-12 h-12 text-muted-foreground" />
+                <div 
+                  className="w-full md:w-64 aspect-video bg-muted rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer group relative"
+                  onClick={() => openOnYouTube(video.id)}
+                >
+                  {video.thumbnail ? (
+                    <>
+                      <img 
+                        src={video.thumbnail} 
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <ExternalLink className="w-8 h-8 text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <Play className="w-12 h-12 text-muted-foreground" />
+                  )}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold line-clamp-2">{video.title}</h2>
+                  <h2 
+                    className="text-xl font-bold line-clamp-2 cursor-pointer hover:text-primary transition-colors"
+                    onClick={() => openOnYouTube(video.id)}
+                  >
+                    {video.title}
+                  </h2>
                   <p className="text-muted-foreground mt-1">{video.channelTitle}</p>
                   <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -262,6 +296,15 @@ export default function VideoAnalyzer() {
                       {formatRelativeTime(video.publishedAt)}
                     </span>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => openOnYouTube(video.id)}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Watch on YouTube
+                  </Button>
                   {video.tags && video.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-4">
                       {video.tags.slice(0, 10).map((tag, index) => (
