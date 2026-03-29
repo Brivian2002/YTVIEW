@@ -78,7 +78,7 @@ export default function APIPage() {
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Clock className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-4">Launching Q2 2024</h2>
+            <h2 className="text-2xl font-bold mb-4">Launching Q2 2026</h2>
             <p className="text-muted-foreground max-w-lg mx-auto mb-6">
               We're putting the finishing touches on our API. Be the first to know 
               when it launches and get early access pricing.
@@ -91,7 +91,7 @@ export default function APIPage() {
                 </Link>
               </Button>
               <Button variant="outline" asChild>
-                <a href="mailto:api@ytubeview.com">
+                <a href="brightsany3000@gmail.com">
                   Contact Sales
                 </a>
               </Button>
