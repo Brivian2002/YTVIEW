@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const navLinks = [
-  { label: 'Features', href: '#features' },
+  { label: 'Features', href: 'https://ytubeview.vercel.app' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Trending', href: '/trending' },
   { label: 'Contact', href: '/contact' },
