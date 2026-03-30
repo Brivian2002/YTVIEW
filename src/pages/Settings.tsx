@@ -72,48 +72,30 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
-               <CardTitle>Profile Information</CardTitle>
-<CardDescription>
-  Update your personal information and public profile.
-</CardDescription>
-</CardHeader>
-<CardContent className="space-y-4">
-  <div className="flex items-center gap-4 mb-6">
-    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-      <span className="text-2xl font-medium">
-        {user?.name?.charAt(0).toUpperCase()}
-      </span>
-    </div>
-    <div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => document.getElementById("avatar-upload")?.click()}
-      >
-        Change Avatar
-      </Button>
-      <input
-        id="avatar-upload"
-        type="file"
-        accept="image/jpeg,image/png,image/gif"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file && file.size <= 2 * 1024 * 1024) {
-            // Handle file upload logic here (e.g., set preview, call API)
-          } else if (file) {
-            alert("File size must be less than 2MB.");
-          }
-        }}
-      />
-      <p className="text-xs text-muted-foreground mt-1">
-        JPG, PNG or GIF. Max 2MB.
-      </p>
-    </div>
-  </div>
+               </CardTitle>
+              <CardDescription>
+                Update your personal information and public profile.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-2xl font-medium">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <Button variant="outline" size="sm">
+                    Change Avatar
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    JPG, PNG or GIF. Max 2MB.
+                  </p>
+                </div>
+              </div>
 
-  <div className="grid sm:grid-cols-2 gap-4">
-    <div className="space-y-2">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Full Name</Label>
                   <Input
                     value={profileData.name}
