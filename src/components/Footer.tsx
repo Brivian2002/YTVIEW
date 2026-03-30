@@ -3,7 +3,7 @@ import { Play, Twitter, Github, Linkedin, Youtube } from 'lucide-react';
 
 const footerLinks = {
   product: [
-    { label: 'Features', href: '/#features' },
+    { label: 'Features', href: 'https://ytubeview.vercel.app' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'API', href: '/api' },
