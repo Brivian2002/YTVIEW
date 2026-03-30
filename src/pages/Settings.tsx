@@ -72,9 +72,7 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
-               <CardTitle>
-  Profile Information
-</CardTitle>
+               <CardTitle>Profile Information</CardTitle>
 <CardDescription>
   Update your personal information and public profile.
 </CardDescription>
@@ -87,9 +85,27 @@ export default function Settings() {
       </span>
     </div>
     <div>
-      <Button variant="outline" size="sm">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => document.getElementById("avatar-upload")?.click()}
+      >
         Change Avatar
       </Button>
+      <input
+        id="avatar-upload"
+        type="file"
+        accept="image/jpeg,image/png,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file && file.size <= 2 * 1024 * 1024) {
+            // Handle file upload logic here (e.g., set preview, call API)
+          } else if (file) {
+            alert("File size must be less than 2MB.");
+          }
+        }}
+      />
       <p className="text-xs text-muted-foreground mt-1">
         JPG, PNG or GIF. Max 2MB.
       </p>
