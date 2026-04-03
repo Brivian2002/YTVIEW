@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "dist"   # Vite outputs to "dist", not ".next"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Remove the Next.js plugin – it's not needed and will cause errors
+# [[plugins]]
+#   package = "@netlify/plugin-nextjs"
