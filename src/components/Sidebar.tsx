@@ -148,6 +148,8 @@ export default function Sidebar() {
                 <ChevronLeft className="w-4 h-4" />
               )}
             </Button>
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7744791430316817"
+     crossorigin="anonymous"></script>
           </div>
 
           {/* Navigation */}
